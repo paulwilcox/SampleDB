@@ -11,7 +11,7 @@ fs.readdirSync('./dist')
 fs.readdirSync('./dist').forEach(file => {
     
     let source = `./dist/${file}`;
-    let target = `./dist/${path.basename(fileType,'.js')}.${pjVersion}.js`;
+    let target = `./dist/${path.basename(file,'.js')}.${pjVersion}.js`;
 
     fs.copyFile(source, target, err => {
         if (err) throw err;
