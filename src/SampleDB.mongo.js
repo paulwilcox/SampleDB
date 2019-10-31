@@ -3,7 +3,8 @@ let sampleDataSets = require('./SampleDB.server.js');
 
 module.exports = (
 
-    url = 'mongodb://localhost:27017/sampleData', 
+    // recommended: 'mongodb://localhost:27017/SampleDB' 
+    url, 
 
     // omit to do no resets, 
     // pass true to reset from SampleDB,
