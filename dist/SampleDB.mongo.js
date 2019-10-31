@@ -92,7 +92,8 @@ let MongoClient = mongodb.MongoClient;
 
 var SampleDB_mongo = (
 
-    url = 'mongodb://localhost:27017/sampleData', 
+    // recommended: 'mongodb://localhost:27017/SampleDB' 
+    url, 
 
     // omit to do no resets, 
     // pass true to reset from SampleDB,
