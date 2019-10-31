@@ -15,30 +15,30 @@ let licensePlugin = license({
 
 export default [{ 
     // This one just moves the file
-    input: 'src/sampleData.client.js',
+    input: 'src/SampleDB.client.js',
     output: {
-        file: 'dist/sampleData.client.js',
+        file: 'dist/SampleDB.client.js',
         format: 'esm'
     },
     plugins: licensePlugin
 }, {
-    input: 'src/sampleData.client.js',
+    input: 'src/SampleDB.client.js',
     output: {
-        file: 'src/sampleData.server.js',
+        file: 'src/SampleDB.server.js',
         format: 'cjs'
     },
     plugins: licensePlugin
 }, {
-    input: 'src/sampleData.client.js',
+    input: 'src/SampleDB.client.js',
     output: {
-        file: 'dist/sampleData.server.js',
+        file: 'dist/SampleDB.server.js',
         format: 'cjs'
     },
     plugins: licensePlugin
 }, {
-    input: 'src/sampleData.idb.js',
+    input: 'src/SampleDB.idb.js',
     output: {
-        file: 'dist/sampleData.idb.js',
+        file: 'dist/SampleDB.idb.js',
         format: 'esm'
     },
     plugins: [
@@ -47,9 +47,9 @@ export default [{
         licensePlugin
     ],    
 }, {
-    input: 'src/sampleData.mongo.js',
+    input: 'src/SampleDB.mongo.js',
     output: {
-        file: 'dist/sampleData.mongo.js',
+        file: 'dist/SampleDB.mongo.js',
         format: 'cjs'
     },
     plugins: [commonJs(), licensePlugin]

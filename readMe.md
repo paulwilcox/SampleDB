@@ -2,6 +2,12 @@
 
 Sample data in a database like structure.  A core set of data is translated into node-consumable data, IndexedDB data, and MongoDB data.  You can specify what this core set is.  You can easily reset or repopulate the sample data in IndexedDB or MongoDB.  
 
+### Getting Started
+
+This is realy a package to help with development and testing, so:
+
+`npm install sampledb --save-dev`
+
 ### Records
 
 A record is an object with properties.

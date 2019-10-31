@@ -9,7 +9,7 @@
 
 'use strict';
 
-var sampleData_client = {
+var SampleDB_client = {
 
     products: [
         { id: 123456, price: 5 },
@@ -72,4 +72,4 @@ var sampleData_client = {
 
 };
 
-module.exports = sampleData_client;
+module.exports = SampleDB_client;

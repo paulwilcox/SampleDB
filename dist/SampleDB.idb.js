@@ -7,22 +7,7 @@
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-'use strict';
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var mongodb = _interopDefault(require('mongodb'));
-
-/**
- * ISC License (ISC)
- * Copyright (c) 2019, Paul Wilcox <t78t78@gmail.com>
- * 
- * Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
-
-var sampleData_client = {
+var sample = {
 
     products: [
         { id: 123456, price: 5 },
@@ -85,63 +70,99 @@ var sampleData_client = {
 
 };
 
-var sampleData_server = sampleData_client;
-
-let MongoClient = mongodb.MongoClient;
-
-
-var sampleData_mongo = (
-
-    url = 'mongodb://localhost:27017/sampleData', 
+async function SampleDB_idb (
+    
+    dbName, 
 
     // omit to do no resets, 
-    // pass true to reset from sampleData,
+    // pass true to reset from SampleDB,
     // pass an {object} of key:data's to reset to that database
-    // pass a 'key' to reset only that key from sampleData  
+    // pass an [{key,keyPath,data}] to reset to that database with keypaths
+    // pass a 'key' to reset only that key from SampleDB          
     reset = false,
 
     // set to true to delete any dataset not represented in reset
-    deleteWhenNotInReset = false
+    deleteWhenNotInReset = false 
+    
+) {
+    
+    let fullReset = reset === true && deleteWhenNotInReset;
 
-) =>
+    if (fullReset)
+        await indexedDB.deleteDatabase(dbName);
 
-    MongoClient.connect(url, { useNewUrlParser: true})
-    .then(async client => {
+    let version =
+        fullReset ? 1 
+        : reset ? await getDbVersion(dbName) + 1
+        : undefined;
 
-        let db = client.db();
-        let collections = await db.collections();
-        let collectionNames = await collections.map(c => c.s.name);
+    return new Promise((res,rej) => {
+        let dbOpenRequest = indexedDB.open(dbName, version);
+        dbOpenRequest.onsuccess = event => res(event.target.result);
+        dbOpenRequest.onupgradeneeded = 
+            event => upgrade(event.target.result, reset, deleteWhenNotInReset);
+    });
 
-        if (!reset)
-            return db;
+}
 
-        let datasets = 
-            reset === true ? sampleData_server
-            : typeof reset === 'object' && Object.keys(reset).length > 0 ? reset
-            : typeof reset === 'string' ? { [reset]: sampleData_server[reset] }
-            : null;
+async function getDbVersion(dbName) {
+    return new Promise((res,rej) => {
+        let dbOpenRequest = indexedDB.open(dbName);
+        dbOpenRequest.onsuccess = event => {
+            let db = event.target.result;
+            let v = db.version;
+            db.close();
+            res(v);
+        };
+    });
+}
 
-        let deleteKeys = 
-            deleteWhenNotInReset 
-            ? collectionNames
-            : Object.keys(datasets);
+async function upgrade (db, reset, deleteWhenNotInReset) { 
 
-        for (let key of deleteKeys) {                
-            if (collectionNames.indexOf(key) == -1)
-                continue;
-            console.log('deleteing: ' + key);
-            await db.dropCollection(key);
-        }
+    let isObject = typeof reset === 'object' && Object.keys(reset).length > 0;
 
-        for (let key of Object.keys(datasets)) {
-            console.log('creating: ' + key);
-            await db.createCollection(key); 
-            await db.collection(key).insertMany(datasets[key]);
-        }
+    let datasets = 
+        reset === true ? sample
+        : isObject ? reset
+        : typeof reset === 'string' ? { [reset]: sample[reset] }
+        : Array.isArray(reset) ? reset.reduce((a,b) => Object.assign(a, {[b.key]: b.data}), {})
+        : null;
+        
+    let keyPaths = 
+        reset === true ? Object.keys(sample).map(key => ({ [key]: 'id' }))
+        : isObject ? Object.keys(datasets).reduce((a,b) => Object.assign(a, {[b.key]: 'id' }), {})
+        : typeof reset === 'string' ? { [reset]: { [key]: 'id' } }
+        : Array.isArray(reset) ? reset.reduce((a,b) => Object.assign(a, {[b.key]: b.keyPath}), {})
+        : null;
 
-        return db;
+    let deleteKeys = 
+        deleteWhenNotInReset 
+        ? [...db.objectStoreNames]
+        : Object.keys(datasets);
+        
+    for (let key of deleteKeys) { 
+        if ([...db.objectStoreNames].indexOf(key) == -1)
+            continue;
+        console.log(`deleting ${key}`);
+        await db.deleteObjectStore(key);
+    }
 
-    })
-    .catch(err => console.log(err));
+    for (let key of Object.keys(datasets)) { 
 
-module.exports = sampleData_mongo;
+        console.log(`creating ${key}`);
+
+        // if the first row of the store contains the expected key, 
+        // then no autoincrement, otherwise yes.
+        let store = await db.createObjectStore(key, {
+            keyPath: keyPaths[key],
+            autoIncrement: datasets[key].length > 0 && !Object.keys(datasets[key][0]).includes(keyPaths[key])
+        });
+
+        for (let row of datasets[key]) 
+            store.put(row);
+
+    }
+
+}
+
+export default SampleDB_idb;

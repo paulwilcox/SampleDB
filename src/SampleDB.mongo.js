@@ -1,14 +1,14 @@
 let MongoClient = require('mongodb').MongoClient;
-let sampleDataSets = require('./sampleData.server.js');
+let sampleDataSets = require('./SampleDB.server.js');
 
 module.exports = (
 
     url = 'mongodb://localhost:27017/sampleData', 
 
     // omit to do no resets, 
-    // pass true to reset from sampleData,
+    // pass true to reset from SampleDB,
     // pass an {object} of key:data's to reset to that database
-    // pass a 'key' to reset only that key from sampleData  
+    // pass a 'key' to reset only that key from SampleDB  
     reset = false,
 
     // set to true to delete any dataset not represented in reset
