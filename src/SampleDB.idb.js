@@ -61,7 +61,7 @@ async function upgrade (db, reset, deleteWhenNotInReset) {
     let keyPaths = 
         reset === true ? Object.keys(sample).map(key => ({ [key]: 'id' }))
         : isObject ? Object.keys(datasets).reduce((a,b) => Object.assign(a, {[b.key]: 'id' }), {})
-        : typeof reset === 'string' ? { [reset]: { [key]: 'id' } }
+        : typeof reset === 'string' ? { [reset]: 'id' }
         : Array.isArray(reset) ? reset.reduce((a,b) => Object.assign(a, {[b.key]: b.keyPath}), {})
         : null;
 
