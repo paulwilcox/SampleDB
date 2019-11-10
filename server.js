@@ -1,7 +1,6 @@
 let http = require('http');
 let fs = require('fs');
-let sampleMongo = require('./dist/sampleData.mongo.js');
-let getMongo = require('./example/server.getMongo.js');
+let sampleMongo = require('./dist/SampleDB.mongo.js');
 
 // Note that because this isnt really supposed to be a produciton site,
 // I'm (psw) taking advantage and writing it only using 'http' (and not
@@ -58,13 +57,6 @@ module.exports = http.createServer(async (request, response) => {
             await sampleMongo('mongodb://localhost:27017/sampleData', data);
             response.writeHead(200, { 'Content-type': 'text/plain' });
             response.end('sampleData in MongoDB has been reset with custom data.');
-            break;
-
-        case '/getmongo':
-            response.writeHead(200, { 'Content-Type': 'application/json' });
-            getMongo()
-                .then(json => response.end(json))
-                .catch(e => console.log(e));
             break;
 
         case '/favicon.ico':

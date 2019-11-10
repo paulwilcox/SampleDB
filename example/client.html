@@ -1,14 +1,11 @@
 <script type='module'>
 
-    import sampleIdb from "../dist/sampleData.idb.js";
+    import sampleIdb from "../dist/SampleDB.idb.js";
 
-    (async () => {
-
-        await sampleIdb('sampleData', { new: [{a: 'eigh', b: 'bee', c: 'sea'}] });
-
-        // TODO: do something
-
-    })();
+    sampleIdb('SampleDB', { new: [{a: 'eigh', b: 'bee', c: 'sea'}] })
+    .then(db => 
+        console.log([...db.objectStoreNames])
+    );
 
 </script>
 
