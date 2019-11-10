@@ -1,6 +1,6 @@
 {
   "name": "sampledb",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Sample data in a database style format.",
   "main": ".dist/SampleDB.server.js",
   "directories": {
