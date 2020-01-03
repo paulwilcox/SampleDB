@@ -53,5 +53,12 @@ export default [{
         format: 'cjs'
     },
     plugins: [commonJs(), licensePlugin]
+}, {
+    input: 'src/SampleDB.mongo2.js',
+    output: {
+        file: 'dist/SampleDB.mongo2.js',
+        format: 'cjs'
+    },
+    plugins: [commonJs({ include: 'node_modules/**' }), licensePlugin]
 }];
 
