@@ -1,7 +1,7 @@
 let MongoClient = require('mongodb').MongoClient;
 let fs = require('fs');
 
-module.exports = (url) => new connector(url);
+module.exports = url => new connector(url);
 
 class connector {
     
@@ -72,7 +72,7 @@ class connector {
                 droppedCollections = droppedCollections.join(',');
                 console.log();
                 console.log(
-                    `The following mongodb collections were dropped: ${droppedCollections}.`
+                    `Dropped mongodb collections: ${droppedCollections}.`
                 );
                 console.log();
             }
@@ -87,7 +87,7 @@ class connector {
                 createdCollections = createdCollections.join(',');
                 console.log();
                 console.log(
-                    `The following mongodb collections were created: ${createdCollections}.`
+                    `Created mongodb collections: ${createdCollections}.`
                 );
                 console.log();
             }

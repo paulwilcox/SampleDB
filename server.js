@@ -70,6 +70,7 @@ module.exports = http.createServer(async (request, response) => {
                 url.endsWith('.css') ? 'text/css'
                 : url.endsWith('.js') ? 'text/javascript'
                 : url.endsWith('.html') ? 'text/html'
+                : url.endsWith('.json') ? 'text/json'
                 : null;
 
             fs.readFile('.' + url, function(error, content) {

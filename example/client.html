@@ -1,8 +1,11 @@
 <script type='module'>
 
-    import sampleIdb from "../dist/SampleDB.idb.js";
+    import sampleIdb from "../dist/SampleDB.idb2.js";
 
-    sampleIdb('SampleDB', { new: [{a: 'eigh', b: 'bee', c: 'sea'}] })
+    sampleIdb('SampleDB')
+    .incomingJson('./example/SampleDB.json')
+    .reset(true)
+    .connect()
     .then(db => 
         console.log([...db.objectStoreNames])
     );

@@ -47,6 +47,17 @@ export default [{
         licensePlugin
     ],    
 }, {
+    input: 'src/SampleDB.idb2.js',
+    output: {
+        file: 'dist/SampleDB.idb2.js',
+        format: 'esm'
+    },
+    plugins: [
+        nodeResolve({ jsnext: true }), 
+        commonJs({ include: 'node_modules/**' }), 
+        licensePlugin
+    ],    
+}, {
     input: 'src/SampleDB.mongo.js',
     output: {
         file: 'dist/SampleDB.mongo.js',
