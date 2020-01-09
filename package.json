@@ -7,8 +7,7 @@
     "example": "example"
   },
   "scripts": {
-    "gitPublish": "node_scripts\\gitPublish.cmd",
-    "afterVersionBump": "node node_scripts\\afterVersionBump.js"
+    "gitPublish": "git push https://github.com/paulwilcox/SampleDB master"
   },
   "repository": {
     "type": "git",
