@@ -1,9 +1,8 @@
 
 let db = await 
     sampleIdb('SampleDB')
-    .incomingJson('/example/SampleDB.json')
+    .incomingJson('/test/SampleDB.json')
     .reset(true)
     .connect();
 
 return true;
-

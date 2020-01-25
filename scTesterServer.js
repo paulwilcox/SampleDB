@@ -3,7 +3,7 @@ let http = require('http');
 let fs = require('fs');
 let puppeteer = require('puppeteer');
 let { performance } = require('perf_hooks');
-let sampleMongo = require('./src/SampleDB.mongo.js');
+let sampleMongo = require('./src/SampleDB.mongo2.js');
 
 let testDirectory = './test';
 let port = 8082; 
@@ -159,7 +159,7 @@ function startServer () {
                 <body>
                 <script type = 'module'>
             
-                    import sampleIdb from '/src/SampleDB.idb.js';
+                    import sampleIdb from '/src/SampleDB.idb2.js';
 
                     async function testFunc () {
                         ${content}  
