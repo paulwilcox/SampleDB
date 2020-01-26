@@ -1,62 +1,64 @@
-export default {
+export default (json, keysToInclude) => 
+    new manager().reset(
+        json, 
+        keysToInclude
+    );
 
-    products: [
-        { id: 123456, price: 5 },
-        { id: 123457, price: 2 },
-        { id: 123458, price: 1.5 },
-        { id: 123459, price: 4 }
-    ],        
+class manager {
 
-    customers: [
-        { id: 1, fullname: "Jane Doe" },
-        { id: 2, fullname: "John Doe" }
-    ],  
+    constructor() {
+        this.data = {};
+    }
 
-    potentialCustomers: [
-        { id: 2, fullname: "Johnathan Doe" },
-        { id: 3, fullname: "John Q. Public" },
-        { id: 4, fullname: "John J. Gingleheimer-Schmidt" }
-    ],
+    reset (
+        json, 
+        keysToInclude, 
+        deleteIfKeyNotFound = false
+    ) {
 
-    shoplifters: [
-        { id: 4, fullname: "John J. Gingleheimer-Schmidt" },
-        { id: 5, fullname: "Sneaky Pete" }
-    ],
+        if (json.endsWith('.json'))
+            json = fs.readFileSync(json).toString();
 
-    orders: [
-        { id: 901, customer: 1, product: 123456, speed: 1, rating: 2 },
-        { id: 902, customer: 1, product: 123457, speed: 2, rating: 7 },
-        { id: 903, customer: 2, product: 123456, speed: 3, rating: 43 },
-        { id: 904, customer: 2, product: 123457, speed: 4, rating: 52 },
-        { id: 905, customer: 1, product: 123459, speed: 5, rating: 93 },
-        { id: 906, customer: 1, product: 123459, speed: 6, rating: 74 },
-        { id: 907, customer: 2, product: 123458, speed: 7, rating: 3 },
-        { id: 908, customer: 2, product: 123458, speed: 8, rating: 80 },
-        { id: 909, customer: 1, product: 123459, speed: 7, rating: 23 },
-        { id: 910, customer: 1, product: 123459, speed: 8, rating: 205 },
-        { id: 911, customer: 1, product: 123459, speed: 3, rating: 4 },
-        { id: 912, customer: 7, product: 123457, speed: 2, rating: 6 } // notice no customer 7 (use for outer joins)
-    ],    
+        if (typeof json === 'string')
+            json = JSON.parse(json);
 
-    students: [
-        { id: "a", name: "Andrea" },
-        { id: "b", name: "Becky" },
-        { id: "c", name: "Colin" }
-    ],
+        // Get the relevant keys from source
+        if (keysToInclude) {
 
-    foods: [
-        { id: 1, name: 'tacos' },
-        { id: 2, name: 'skittles' },
-        { id: 3, name: 'flan' }
-    ],
+            keysToInclude = 
+                keysToInclude
+                .split(',')
+                .map(str => str.trim());
 
-    scores: [
-        {id: 1, student: "a", score: 5 },
-        {id: 2, student: "b", score: 7 },
-        {id: 3, student: "c", score: 10 },
-        {id: 4, student: "a", score: 0 },
-        {id: 5, student: "b", score: 6 },
-        {id: 6, student: "c", score: 9 }
-    ]
+            let j = {};
+            for (let entry of Object.entries(json))   
+                if (keysToInclude.includes(entry[0])) 
+                    j[entry[0]] = entry[1];
+
+            json = j;
+
+        }
+
+        // delete irrelevant keys in target
+        if (deleteIfKeyNotFound) {
+
+            let targetKeys = Object.keys(this.data);
+            let sourceKeys = Object.keys(json);
+
+            let keysToDelete = targetKeys
+                .filter(tk => !sourceKeys.includes(tk));
+
+            for (let key of keysToDelete)                
+                delete this.data[key];
+
+        }
+
+        // reset the target keys with the source keys
+        for(let entry of Object.entries(json))
+            this.data[entry[0]] = json[entry[0]];
+        
+        return this;
+
+    }
 
 }

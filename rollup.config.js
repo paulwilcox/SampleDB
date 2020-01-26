@@ -13,8 +13,9 @@ let licensePlugin = license({
     }
 });
 
+// Some of these just move the file.
+// Maybe a file copy can be replaced for them.
 export default [{ 
-    // This one just moves the file
     input: 'src/SampleDB.client.js',
     output: {
         file: 'dist/SampleDB.client.js',
@@ -47,29 +48,11 @@ export default [{
         licensePlugin
     ],    
 }, {
-    input: 'src/SampleDB.idb2.js',
-    output: {
-        file: 'dist/SampleDB.idb2.js',
-        format: 'esm'
-    },
-    plugins: [
-        nodeResolve({ jsnext: true }), 
-        commonJs({ include: 'node_modules/**' }), 
-        licensePlugin
-    ],    
-}, {
     input: 'src/SampleDB.mongo.js',
     output: {
         file: 'dist/SampleDB.mongo.js',
         format: 'cjs'
     },
     plugins: [commonJs(), licensePlugin]
-}, {
-    input: 'src/SampleDB.mongo2.js',
-    output: {
-        file: 'dist/SampleDB.mongo2.js',
-        format: 'cjs'
-    },
-    plugins: [commonJs({ include: 'node_modules/**' }), licensePlugin]
 }];
 

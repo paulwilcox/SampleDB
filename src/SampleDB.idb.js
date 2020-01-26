@@ -1,41 +1,65 @@
-import sample from './SampleDB.client.js';
+export default dbName => new connector(dbName);
 
-export default async function (
-    
-    dbName, 
+class connector {
 
-    // omit to do no resets, 
-    // pass true to reset from SampleDB,
-    // pass an {object} of key:data's to reset to that database
-    // pass an [{key,keyPath,data}] to reset to that database with keypaths
-    // pass a 'key' to reset only that key from SampleDB          
-    reset = false,
+    constructor(dbName) {
+        this.dbName = dbName;
+    }
 
-    // set to true to delete any dataset not represented in reset
-    deleteWhenNotInReset = false 
-    
-) {
-    
-    let fullReset = reset === true && deleteWhenNotInReset;
+    reset (
+        json, 
+        keyFilter,
+        deleteIfKeyNotFound = false
+    ) {
 
-    if (fullReset)
-        await indexedDB.deleteDatabase(dbName);
+        if (json.endsWith('.json')) 
+            let json = (await fetch(this.json)).json();
 
-    let version =
-        fullReset ? 1 
-        : reset ? await getDbVersion(dbName) + 1
-        : undefined;
+        if (typeof json === 'string')
+            json = JSON.parse(json);
 
-    return new Promise((res,rej) => {
-        let dbOpenRequest = indexedDB.open(dbName, version);
-        dbOpenRequest.onsuccess = event => res(event.target.result);
-        dbOpenRequest.onupgradeneeded = 
-            event => upgrade(event.target.result, reset, deleteWhenNotInReset);
-    });
+        if (keyFilter) {
+            let j = {};
+            let keysToInclude = keyFilter.split(',').map(str => str.trim());
+            for (let entry of Object.entries(json))   
+                if (keysToInclude.includes(entry[0])) 
+                    j[entry[0]] = entry[1];
+            json = j;
+        }
+
+        this.json = json;
+        this.deleteIfKeyNotFound = deleteIfKeyNotFound;
+        return this;
+
+    }
+
+    async connect () {
+
+        if (this.deleteIfKeyNotFound)
+            await new Promise((res,rej) => {
+                let request = indexedDB.deleteDatabase(this.dbName);
+                request.onsuccess = event => res(event.target.result);
+                request.onerror = () => rej(`error deleteing ${this.dbName}`);
+            });
+
+        let version =
+            this.deleteIfKeyNotFound ? 1 
+            : this.json ? await getDbVersion(dbName) + 1
+            : undefined;
+
+        return await new Promise((res,rej) => {
+            let dbOpenRequest = indexedDB.open(this.dbName, version);
+            dbOpenRequest.onsuccess = event => res(event.target.result);
+            dbOpenRequest.onerror = () => rej(`error opening ${this.dbName}`)
+            dbOpenRequest.onupgradeneeded = event => 
+                upgrade(event.target.result, this.json, this.deleteIfKeyNotFound);
+        });
+
+    }
 
 }
 
-async function getDbVersion(dbName) {
+function getDbVersion(dbName) {
     return new Promise((res,rej) => {
         let dbOpenRequest = indexedDB.open(dbName);
         dbOpenRequest.onsuccess = event => {
@@ -47,51 +71,65 @@ async function getDbVersion(dbName) {
     });
 }
 
-async function upgrade (db, reset, deleteWhenNotInReset) { 
-
-    let isObject = typeof reset === 'object' && Object.keys(reset).length > 0;
-
-    let datasets = 
-        reset === true ? sample
-        : isObject ? reset
-        : typeof reset === 'string' ? { [reset]: sample[reset] }
-        : Array.isArray(reset) ? reset.reduce((a,b) => Object.assign(a, {[b.key]: b.data}), {})
-        : null;
+async function upgrade (db, json, deleteIfKeyNotFound) { 
         
-    let keyPaths = 
-        reset === true ? Object.keys(sample).map(key => ({ [key]: 'id' }))
-        : isObject ? Object.keys(datasets).reduce((a,b) => Object.assign(a, {[b.key]: 'id' }), {})
-        : typeof reset === 'string' ? { [reset]: 'id' }
-        : Array.isArray(reset) ? reset.reduce((a,b) => Object.assign(a, {[b.key]: b.keyPath}), {})
+    let keyPaths = json 
+        ? Object.keys(json).map(key => ({ [key]: 'id' }))
         : null;
 
-    let deleteKeys = 
-        deleteWhenNotInReset 
-        ? [...db.objectStoreNames]
-        : Object.keys(datasets);
-        
-    for (let key of deleteKeys) { 
-        if ([...db.objectStoreNames].indexOf(key) == -1)
-            continue;
-        console.log(`deleting ${key}`);
-        await db.deleteObjectStore(key);
+    let targetKeys = [...db.objectStoreNames];
+    let sourceKeys = Object.keys(json);
+    let droppedStores = [];
+    let createdStores = [];
+
+    // delete irrelevant stores from target
+    if (deleteIfKeyNotFound) {
+
+        let keysToDelete = targetKeys
+            .filter(tk => !sourceKeys.includes(tk));
+
+        for (let key of keysToDelete) 
+            await db.deleteObjectStore(key);
+
+        droppedStores.push(...keysToDelete);
+
     }
 
-    for (let key of Object.keys(datasets)) { 
+    // add relevant stores to target
+    for (let sourceKey of sourceKeys) { 
 
-        console.log(`creating ${key}`);
+        if (targetKeys.includes(sourceKey)) {
+            await db.deleteObjectStore(sourceKey);
+            deletedStores.push(sourceKey);
+        }
+
+        let keyPath = keyPaths[sourceKey];
+        let autoincrement = 
+            json[sourceKey]
+            .find(row => Object.keys(row).includes(keyPath));
 
         // if the first row of the store contains the expected key, 
         // then no autoincrement, otherwise yes.
-        let store = await db.createObjectStore(key, {
-            keyPath: keyPaths[key],
-            autoIncrement: datasets[key].length > 0 && !Object.keys(datasets[key][0]).includes(keyPaths[key])
-        });
+        let store = await db.createObjectStore(
+            sourceKey, 
+            {keyPath, autoIncrement}
+        );
 
-        for (let row of datasets[key]) 
+        for (let row of json[sourceKey]) 
             store.put(row);
+
+        createdStores.push(sourceKey);
 
     }
 
-}
+    // log changes
+    if (droppedStores.length > 0) console.log(
+        `\ndropped idb.${db.name} stores:` + 
+        `${droppedStores.join(',')}.\n`
+    );
+    if (createdStores.length > 0) console.log(
+        `\ncreated idb.${db.name} stores: ` + 
+        `${createdStores.join(',')}.\n`
+    );
 
+}

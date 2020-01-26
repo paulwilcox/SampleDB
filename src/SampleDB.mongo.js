@@ -1,58 +1,102 @@
 let MongoClient = require('mongodb').MongoClient;
-let sampleDataSets = require('./SampleDB.server.js');
+let fs = require('fs');
 
-module.exports = (
+module.exports = url => new manager(url);
 
-    // recommended: 'mongodb://localhost:27017/SampleDB' 
-    url, 
+class manager {
+    
+    constructor(
+        url // recommended: 'mongodb://localhost:27017/SampleDB'
+    ) {
+        this.url = url;
+    }
 
-    // omit to do no resets, 
-    // pass true to reset from SampleDB,
-    // pass an {object} of key:data's to reset to that database
-    // pass a 'key' to reset only that key from SampleDB  
-    reset = false,
+    reset (
+        json, 
+        keyFilter, 
+        deleteIfKeyNotFound = false
+    ) {
 
-    // set to true to delete any dataset not represented in reset
-    deleteWhenNotInReset = false
+        if (json.endsWith('.json'))
+            json = fs.readFileSync(json).toString();
 
-) =>
+        if (typeof json === 'string')
+            json = JSON.parse(json);
 
-    MongoClient.connect(url, { useNewUrlParser: true})
-    .then(async client => {
+        if (keyFilter) {
+            let j = {};
+            let keysToInclude = keyFilter.split(',').map(str => str.trim());
+            for (let entry of Object.entries(json))   
+                if (keysToInclude.includes(entry[0])) 
+                    j[entry[0]] = entry[1];
+            json = j;
+        }
 
-        let db = client.db();
-        let collections = await db.collections();
-        let collectionNames = await collections.map(c => c.s.name);
+        this.json = json;
+        this.deleteIfKeyNotFound = deleteIfKeyNotFound;
+        return this;
 
-        if (!reset)
+    }
+
+    async connect () { 
+
+        try {
+
+            let client = await MongoClient.connect(
+                this.url, 
+                { useNewUrlParser: true}
+            );
+
+            let db = client.db();
+            let targetKeys = (await db.collections()).map(c => c.s.name);
+            let sourceKeys = Object.keys(this.json);
+            let droppedCollections = [];
+            let createdCollections = [];
+
+            // If reset was never called, just connect
+            if (!this.json) 
+                return db;
+
+            // Drop irrelevant collections in target
+            if(this.deleteIfKeyNotFound) {
+
+                let keysToDelete = targetKeys
+                    .filter(tk => !sourceKeys.includes(tk));                    
+
+                for (let key of keysToDelete)               
+                    await db.dropCollection(key);
+
+                droppedCollections.push(...keysToDelete);
+
+            }
+
+            // replace relevant collections in target with source datasets 
+            for (let sourceKey of sourceKeys) {
+                if (targetKeys.includes(sourceKey)) {
+                    await db.dropCollection(sourceKey);
+                    droppedCollections.push(sourceKey);
+                }
+                await db.createCollection(sourceKey); 
+                await db.collection(sourceKey).insertMany(this.json[sourceKey]);
+                createdCollections.push(sourceKey);
+            }
+
+            // log activity
+            if (droppedCollections.length > 0) console.log(
+                `Dropped mongodb collections: ${droppedCollections.join(',')}.`
+            );
+            if (createdCollections.length > 0) console.log(
+                `Created mongodb collections: ${createdCollections.join(',')}.`
+            );
+
             return db;
 
-        let datasets = 
-            reset === true ? sampleDataSets
-            : typeof reset === 'object' && Object.keys(reset).length > 0 ? reset
-            : typeof reset === 'string' ? { [reset]: sampleDataSets[reset] }
-            : null;
-
-        let deleteKeys = 
-            deleteWhenNotInReset 
-            ? collectionNames
-            : Object.keys(datasets);
-
-        for (let key of deleteKeys) {                
-            if (collectionNames.indexOf(key) == -1)
-                continue;
-            console.log('deleteing: ' + key);
-            await db.dropCollection(key);
         }
+    
+        catch(err) { 
+            console.log(err); 
+        } 
 
-        for (let key of Object.keys(datasets)) {
-            console.log('creating: ' + key);
-            await db.createCollection(key); 
-            await db.collection(key).insertMany(datasets[key]);
-        }
+    }
 
-        return db;
-
-    })
-    .catch(err => console.log(err));
-
+}
