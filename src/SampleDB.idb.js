@@ -1,6 +1,6 @@
-export default dbName => new connector(dbName);
+export default dbName => new manager(dbName);
 
-class connector {
+class manager {
 
     constructor(dbName) {
         this.dbName = dbName;
