@@ -6,26 +6,34 @@ class connector {
         this.dbName = dbName;
     }
 
-    incomingJson (json, keyFilter) {
-        this.json = json;
-        this.keyFilter = keyFilter;
-        return this;
-    }
+    reset (
+        json, 
+        keyFilter,
+        deleteIfKeyNotFound = false
+    ) {
 
-    reset (deleteIfKeyNotFound = false) {
+        if (json.endsWith('.json')) 
+            let json = (await fetch(this.json)).json();
+
+        if (typeof json === 'string')
+            json = JSON.parse(json);
+
+        if (keyFilter) {
+            let j = {};
+            let keysToInclude = keyFilter.split(',').map(str => str.trim());
+            for (let entry of Object.entries(json))   
+                if (keysToInclude.includes(entry[0])) 
+                    j[entry[0]] = entry[1];
+            json = j;
+        }
+
+        this.json = json;
         this.deleteIfKeyNotFound = deleteIfKeyNotFound;
         return this;
+
     }
 
     async connect () {
-
-        if (this.json.endsWith('.json')) {
-            let response = await fetch(this.json);
-            let json = await response.json();
-            this.json = normalizeJson(json, this.keyFilter);
-        }
-        else 
-            this.json = normalizeJson(json, keyFilter);
 
         if (this.deleteIfKeyNotFound)
             await new Promise((res,rej) => {
@@ -51,24 +59,6 @@ class connector {
 
 }
 
-function normalizeJson(json, keyFilter) {
-
-    if (typeof json === 'string')
-        json = JSON.parse(json);
-
-    if (keyFilter) {
-        let j = {};
-        let keysToInclude = keyFilter.split(',').map(str => str.trim());
-        for (let entry of Object.entries(json))   
-            if (keysToInclude.includes(entry[0])) 
-                j[entry[0]] = entry[1];
-        json = j;
-    }
-
-    return json;
-
-}
-
 function getDbVersion(dbName) {
     return new Promise((res,rej) => {
         let dbOpenRequest = indexedDB.open(dbName);
@@ -83,60 +73,63 @@ function getDbVersion(dbName) {
 
 async function upgrade (db, json, deleteIfKeyNotFound) { 
         
-    let keyPaths = 
-        json 
-            ? Object.keys(json).map(key => ({ [key]: 'id' }))
-            : null;
+    let keyPaths = json 
+        ? Object.keys(json).map(key => ({ [key]: 'id' }))
+        : null;
 
-    let deleteKeys = 
-        deleteIfKeyNotFound 
-        ? [...db.objectStoreNames]
-        : Object.keys(json);
-
+    let targetKeys = [...db.objectStoreNames];
+    let sourceKeys = Object.keys(json);
     let droppedStores = [];
-
-    for (let key of deleteKeys) { 
-        if (![...db.objectStoreNames].includes(key))
-            continue;
-        await db.deleteObjectStore(key);
-        droppedStores.push[key];
-    }
-
-    if (droppedStores.length > 0) {
-        console.log();
-        console.log(
-            `dropped idb.${db.name} stores: ${droppedStores.join(',')}.`
-        )
-        console.log();
-    }
-
     let createdStores = [];
 
-    for (let key of Object.keys(json)) { 
+    // delete irrelevant stores from target
+    if (deleteIfKeyNotFound) {
+
+        let keysToDelete = targetKeys
+            .filter(tk => !sourceKeys.includes(tk));
+
+        for (let key of keysToDelete) 
+            await db.deleteObjectStore(key);
+
+        droppedStores.push(...keysToDelete);
+
+    }
+
+    // add relevant stores to target
+    for (let sourceKey of sourceKeys) { 
+
+        if (targetKeys.includes(sourceKey)) {
+            await db.deleteObjectStore(sourceKey);
+            deletedStores.push(sourceKey);
+        }
+
+        let keyPath = keyPaths[sourceKey];
+        let autoincrement = 
+            json[sourceKey]
+            .find(row => Object.keys(row).includes(keyPath));
 
         // if the first row of the store contains the expected key, 
         // then no autoincrement, otherwise yes.
-        let store = await db.createObjectStore(key, {
-            keyPath: keyPaths[key],
-            autoIncrement: 
-                   json[key].length > 0 
-                && !Object.keys(json[key][0]).includes(keyPaths[key])
-        });
+        let store = await db.createObjectStore(
+            sourceKey, 
+            {keyPath, autoIncrement}
+        );
 
-        createdStores.push(key);
-
-        for (let row of json[key]) 
+        for (let row of json[sourceKey]) 
             store.put(row);
 
+        createdStores.push(sourceKey);
+
     }
 
-    if (createdStores.length > 0) {
-        console.log();
-        console.log(
-            `created idb.${db.name} stores: ${createdStores.join(',')}.`
-        )
-        console.log();
-    }
-
+    // log changes
+    if (droppedStores.length > 0) console.log(
+        `\ndropped idb.${db.name} stores:` + 
+        `${droppedStores.join(',')}.\n`
+    );
+    if (createdStores.length > 0) console.log(
+        `\ncreated idb.${db.name} stores: ` + 
+        `${createdStores.join(',')}.\n`
+    );
 
 }
