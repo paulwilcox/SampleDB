@@ -1,8 +1,11 @@
+async function test () {
+        
+    let db = await 
+        sampleIdb('SampleDB')
+        .incomingJson('/test/SampleDB.json')
+        .reset(true)
+        .connect();
 
-let db = await 
-    sampleIdb('SampleDB')
-    .incomingJson('/test/SampleDB.json')
-    .reset(true)
-    .connect();
+    return true;
 
-return true;
+}

@@ -1,0 +1,1 @@
+let sampleMongo = require('./src/SampleDB.mongo2.js');

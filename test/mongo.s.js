@@ -1,14 +1,15 @@
-// let sampleMongo = require('../src/SampleDB.mongo2.js');
+async function test() {
+        
+    let db = await 
+        sampleMongo('mongodb://localhost:27017/SampleDB')
+        .incomingJson('./test/SampleDB.json', 'students, scores')
+        .reset(false)
+        .connect();
 
-let db = await 
-    sampleMongo('mongodb://localhost:27017/SampleDB')
-    .incomingJson('./test/SampleDB.json', 'students, scores')
-    .reset(false)
-    .connect();
+    let collections = await db.collections();
 
-let collections = await db.collections();
+    let collectionNames = collections.map(c => c.s.name);
 
-let collectionNames = collections.map(c => c.s.name);
+    return collectionNames.includes('students');
 
-return collectionNames.includes('students');
-
+}

@@ -1,23 +1,38 @@
-require('console.table');
+const npmRoot = 
+    require('child_process')
+    .execSync('npm root -g')
+    .toString()
+    .trim();
+
+let scRequire = package => 
+    require(npmRoot + '/sctester/node_modules/' + package);
+
+scRequire('console.table');
+let chalk = scRequire('chalk');
 let http = require('http');
 let fs = require('fs');
-let puppeteer = require('puppeteer');
+let puppeteer = scRequire('puppeteer'); 
 let { performance } = require('perf_hooks');
 let sampleMongo = require('./src/SampleDB.mongo2.js');
 
 let testDirectory = './test';
-let port = 8082; 
+let port = 8083; 
 
 (async () => {
 
+    console.log();
+    console.log(chalk.bgBlue('Starting SCTester:'));
+    console.log();
+
     let server = startServer();
     let results = [];
+    let errors = [];
 
     for (let file of fs.readdirSync(testDirectory)) {
 
         let fileFull = `${testDirectory}/${file}`;
 
-        if (file.startsWith('testServer') || !file.endsWith('.js'))
+        if (file.startsWith('_') || !file.endsWith('.js'))
             continue;        
 
         for (let location of ['client', 'server']) {
@@ -36,14 +51,10 @@ let port = 8082;
                     if (file.endsWith('.c.js'))
                         continue;
 
-                    eval(`
-                        async function testFunc() {
-                            ${contents}
-                        }
-                    `);
-
+                    eval(contents);
+                    
                     let t0 = performance.now();
-                    result.success = await testFunc();
+                    result.success = (await test()) === true;
                     result.time = performance.now() - t0;
 
                 }
@@ -52,7 +63,7 @@ let port = 8082;
                     if (file.endsWith('.s.js'))
                         continue;
                     let response = await makeClientRequest(fileFull);
-                    result.success = response.split(';')[0];
+                    result.success = response.split(';')[0] === 'true';
                     result.time = response.split(';')[1];
                 }
 
@@ -60,8 +71,8 @@ let port = 8082;
 
             }
             catch (err) {
-                result.success = false;
-                result.errorMsg = err;
+                result.success = `err:${errors.length}`;
+                errors.push(err);
             }
 
             results.push(result);
@@ -71,7 +82,27 @@ let port = 8082;
 
     server.close();
 
+    for(let e = 0; e < errors.length; e++) {
+        console.log(chalk.red(`ERROR ${e}:`));
+        console.log(errors[e]);
+    }
+
+    // friendlier formats and headers
+    for(let result of results) {
+        if (result.time === undefined)
+            result.time = '';
+        result['hh:mm:ss.f'] = result.time;
+        delete result.time;
+        result.success = 
+            result.success === true
+            ? chalk.greenBright(result.success)
+            : chalk.red(result.success); 
+    }
+    
+    console.log();
+    console.log(chalk.blue.underline(`SCTester-Results:`))
     console.table(results);
+    console.log();
 
     process.exit(results.some(res => !res.success) ? 1 : 0);
 
@@ -161,19 +192,15 @@ function startServer () {
             
                     import sampleIdb from '/src/SampleDB.idb2.js';
 
-                    async function testFunc () {
-                        ${content}  
-                    } 
+                    ${content}   
 
                     let div = document.createElement('div');
                     div.id = 'results'; 
 
                     let t0 = performance.now();
 
-                    testFunc()
-                    .then(res => {
-                        div.innerHTML = res;
-                    })
+                    Promise.resolve(test())
+                    .then(res => { div.innerHTML = res; })
                     .then(() => 
                         div.innerHTML += ';' + (performance.now() - t0)
                     )
@@ -185,7 +212,7 @@ function startServer () {
             `;
 
         }
-       
+
         response.writeHead(200, { 'Content-Type': cType });
         response.end(content, 'utf-8');
 
