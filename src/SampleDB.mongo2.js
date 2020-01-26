@@ -1,9 +1,9 @@
 let MongoClient = require('mongodb').MongoClient;
 let fs = require('fs');
 
-module.exports = url => new connector(url);
+module.exports = url => new manager(url);
 
-class connector {
+class manager {
     
     constructor(
         url // recommended: 'mongodb://localhost:27017/SampleDB'
@@ -11,7 +11,11 @@ class connector {
         this.url = url;
     }
 
-    incomingJson (json, keyFilter) {
+    reset (
+        json, 
+        keyFilter, 
+        deleteIfKeyNotFound = false
+    ) {
 
         if (json.endsWith('.json'))
             json = fs.readFileSync(json).toString();
@@ -29,13 +33,9 @@ class connector {
         }
 
         this.json = json;
-        return this;
-
-    }
-
-    reset (deleteIfKeyNotFound = false) {
         this.deleteIfKeyNotFound = deleteIfKeyNotFound;
         return this;
+
     }
 
     async connect () { 
@@ -48,49 +48,46 @@ class connector {
             );
 
             let db = client.db();
-            let collections = await db.collections();
-            let collectionNames = await collections.map(c => c.s.name);
+            let targetKeys = (await db.collections()).map(c => c.s.name);
+            let sourceKeys = Object.keys(this.json);
             let droppedCollections = [];
             let createdCollections = [];
 
-            if (!this.json)
+            // If reset was never called, just connect
+            if (!this.json) 
                 return db;
 
-            let deleteKeys = 
-                this.deleteIfKeyNotFound 
-                ? collectionNames
-                : Object.keys(this.json);
+            // Drop irrelevant collections in target
+            if(this.deleteIfKeyNotFound) {
 
-            for (let key of deleteKeys) {                
-                if (collectionNames.indexOf(key) == -1)
-                    continue;
-                await db.dropCollection(key);
-                droppedCollections.push(key);
+                let keysToDelete = targetKeys
+                    .filter(tk => !sourceKeys.includes(tk));                    
+
+                for (let key of keysToDelete)               
+                    await db.dropCollection(key);
+
+                droppedCollections.push(...keysToDelete);
+
             }
 
-            if (droppedCollections.length > 0) {
-                droppedCollections = droppedCollections.join(',');
-                console.log();
-                console.log(
-                    `Dropped mongodb collections: ${droppedCollections}.`
-                );
-                console.log();
+            // replace relevant collections in target with source datasets 
+            for (let sourceKey of sourceKeys) {
+                if (targetKeys.includes(sourceKey)) {
+                    await db.dropCollection(sourceKey);
+                    droppedCollections.push(sourceKey);
+                }
+                await db.createCollection(sourceKey); 
+                await db.collection(sourceKey).insertMany(this.json[sourceKey]);
+                createdCollections.push(sourceKey);
             }
 
-            for (let key of Object.keys(this.json)) {
-                await db.createCollection(key); 
-                await db.collection(key).insertMany(this.json[key]);
-                createdCollections.push(key);
-            }
-
-            if (createdCollections.length > 0) {
-                createdCollections = createdCollections.join(',');
-                console.log();
-                console.log(
-                    `Created mongodb collections: ${createdCollections}.`
-                );
-                console.log();
-            }
+            // log activity
+            if (droppedCollections.length > 0) console.log(
+                `Dropped mongodb collections: ${droppedCollections.join(',')}.`
+            );
+            if (createdCollections.length > 0) console.log(
+                `Created mongodb collections: ${createdCollections.join(',')}.`
+            );
 
             return db;
 
