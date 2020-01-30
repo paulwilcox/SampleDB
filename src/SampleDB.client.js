@@ -10,14 +10,16 @@ class manager {
         this.data = {};
     }
 
-    reset (
+    async reset (
         json, 
         keysToInclude, 
         deleteIfKeyNotFound = false
     ) {
 
-        if (json.endsWith('.json'))
-            json = fs.readFileSync(json).toString();
+        if (json.endsWith('.json')) {
+            json = await fetch(json);
+            json = await json.json();
+        }
 
         if (typeof json === 'string')
             json = JSON.parse(json);

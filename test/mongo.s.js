@@ -2,13 +2,12 @@ async function test() {
         
     let db = await 
         sampleMongo('mongodb://localhost:27017/SampleDB')
-        .incomingJson('./test/SampleDB.json', 'students, scores')
-        .reset(false)
+        .reset('./test/SampleDB.json', 'students, scores')
         .connect();
 
-    let collections = await db.collections();
-
-    let collectionNames = collections.map(c => c.s.name);
+    let collectionNames = 
+        (await db.collections())
+        .map(c => c.s.name);
 
     return collectionNames.includes('students');
 

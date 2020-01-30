@@ -13,7 +13,7 @@ class manager {
 
     reset (
         json, 
-        keyFilter, 
+        keysToInclude, 
         deleteIfKeyNotFound = false
     ) {
 
@@ -23,13 +23,21 @@ class manager {
         if (typeof json === 'string')
             json = JSON.parse(json);
 
-        if (keyFilter) {
+        // Get the relevant keys from source
+        if (keysToInclude) {
+
+            keysToInclude = 
+                keysToInclude
+                .split(',')
+                .map(str => str.trim());
+
             let j = {};
-            let keysToInclude = keyFilter.split(',').map(str => str.trim());
             for (let entry of Object.entries(json))   
                 if (keysToInclude.includes(entry[0])) 
                     j[entry[0]] = entry[1];
+
             json = j;
+
         }
 
         this.json = json;

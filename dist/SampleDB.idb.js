@@ -7,105 +7,194 @@
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-var sample = {
+var SampleDB_idb = dbName => new manager(dbName);
 
-    products: [
-        { id: 123456, price: 5 },
-        { id: 123457, price: 2 },
-        { id: 123458, price: 1.5 },
-        { id: 123459, price: 4 }
-    ],        
+class manager {
 
-    customers: [
-        { id: 1, fullname: "Jane Doe" },
-        { id: 2, fullname: "John Doe" }
-    ],  
+    constructor(dbName) {
+        this.dbName = dbName;
+    }
 
-    potentialCustomers: [
-        { id: 2, fullname: "Johnathan Doe" },
-        { id: 3, fullname: "John Q. Public" },
-        { id: 4, fullname: "John J. Gingleheimer-Schmidt" }
-    ],
+    reset (
+        json, 
+        keysToInclude,
+        deleteIfKeyNotFound = false
+    ) {
 
-    shoplifters: [
-        { id: 4, fullname: "John J. Gingleheimer-Schmidt" },
-        { id: 5, fullname: "Sneaky Pete" }
-    ],
+        this.doReset = true;
+        this.json = json;
+        this.deleteIfKeyNotFound = deleteIfKeyNotFound;
+        this.fullReset = !keysToInclude && deleteIfKeyNotFound;
+        this.keysToInclude = keysToInclude;
+        return this;
 
-    orders: [
-        { id: 901, customer: 1, product: 123456, speed: 1, rating: 2 },
-        { id: 902, customer: 1, product: 123457, speed: 2, rating: 7 },
-        { id: 903, customer: 2, product: 123456, speed: 3, rating: 43 },
-        { id: 904, customer: 2, product: 123457, speed: 4, rating: 52 },
-        { id: 905, customer: 1, product: 123459, speed: 5, rating: 93 },
-        { id: 906, customer: 1, product: 123459, speed: 6, rating: 74 },
-        { id: 907, customer: 2, product: 123458, speed: 7, rating: 3 },
-        { id: 908, customer: 2, product: 123458, speed: 8, rating: 80 },
-        { id: 909, customer: 1, product: 123459, speed: 7, rating: 23 },
-        { id: 910, customer: 1, product: 123459, speed: 8, rating: 205 },
-        { id: 911, customer: 1, product: 123459, speed: 3, rating: 4 },
-        { id: 912, customer: 7, product: 123457, speed: 2, rating: 6 } // notice no customer 7 (use for outer joins)
-    ],    
+    }
 
-    students: [
-        { id: "a", name: "Andrea" },
-        { id: "b", name: "Becky" },
-        { id: "c", name: "Colin" }
-    ],
+    async connect () {
 
-    foods: [
-        { id: 1, name: 'tacos' },
-        { id: 2, name: 'skittles' },
-        { id: 3, name: 'flan' }
-    ],
+        if (this.doReset) 
+            await this._reset();
 
-    scores: [
-        {id: 1, student: "a", score: 5 },
-        {id: 2, student: "b", score: 7 },
-        {id: 3, student: "c", score: 10 },
-        {id: 4, student: "a", score: 0 },
-        {id: 5, student: "b", score: 6 },
-        {id: 6, student: "c", score: 9 }
-    ]
+        let version = await getDbVersion(this.dbName);
+        version = this.fullReset ? 2 
+            : this.doReset ? version + 1
+            : version;
 
-};
+        let dbOpenRequest = indexedDB.open(this.dbName, version);
 
-async function SampleDB_idb (
+        return await new Promise((res,rej) => {
+            dbOpenRequest.onsuccess = event => res(event.target.result);
+            dbOpenRequest.onerror = () => rej(`error opening ${this.dbName}`);
+            dbOpenRequest.onupgradeneeded = event => this.upgrade(event.target.result);
+        });
+
+    }
+
+    async _reset () {
     
-    dbName, 
-
-    // omit to do no resets, 
-    // pass true to reset from SampleDB,
-    // pass an {object} of key:data's to reset to that database
-    // pass an [{key,keyPath,data}] to reset to that database with keypaths
-    // pass a 'key' to reset only that key from SampleDB          
-    reset = false,
-
-    // set to true to delete any dataset not represented in reset
-    deleteWhenNotInReset = false 
+        if (this.json.endsWith('.json')) {
+            this.json = await fetch(this.json);
+            this.json = await this.json.json();
+        }
     
-) {
+        if (typeof this.json === 'string')
+            this.json = JSON.parse(json);
     
-    let fullReset = reset === true && deleteWhenNotInReset;
+        if (!this.keysToInclude)
+            this.keysToInclude = Object.keys(this.json).join(',');
 
-    if (fullReset)
-        await indexedDB.deleteDatabase(dbName);
+        this.storeSettings = parseKeysToInclude(this.keysToInclude);                
 
-    let version =
-        fullReset ? 1 
-        : reset ? await getDbVersion(dbName) + 1
-        : undefined;
+        // Get the relevant keys from source
+        if (this.keysToInclude) {
+            let j = {};
+            for (let entry of Object.entries(this.json))    
+                if (this.storeSettings.some(ss => ss.key == entry[0])) 
+                    j[entry[0]] = entry[1];
+            this.json = j;
+        }
 
-    return new Promise((res,rej) => {
-        let dbOpenRequest = indexedDB.open(dbName, version);
-        dbOpenRequest.onsuccess = event => res(event.target.result);
-        dbOpenRequest.onupgradeneeded = 
-            event => upgrade(event.target.result, reset, deleteWhenNotInReset);
-    });
+        // Reset the entire database if parameters imply full reset
+        if (this.fullReset)
+            new Promise((res,rej) => {
+                let request = indexedDB.deleteDatabase(this.dbName);
+                request.onsuccess = event => {
+                    console.log(`deleting database ${this.dbName}`);
+                    res(event.target.result);
+                };
+                request.onerror = () => 
+                    rej(`error deleteing ${this.dbName}`);
+            });
+
+        
+    }
+
+    async upgrade (db) { 
+    
+        let targetKeys = [...db.objectStoreNames];
+        let sourceKeys = Object.keys(this.json);
+        let droppedStores = [];
+        let createdStores = [];
+    
+        // delete irrelevant stores from target
+        if (this.deleteIfKeyNotFound) {
+    
+            let keysToDelete = targetKeys
+                .filter(tk => !sourceKeys.includes(tk));
+    
+            for (let key of keysToDelete) 
+                await db.deleteObjectStore(key);
+    
+            droppedStores.push(...keysToDelete);
+    
+        }
+    
+        // add relevant stores to target
+        for (let sourceKey of sourceKeys) { 
+    
+            let srcSettings = this.storeSettings
+                .find(ss => ss.key == sourceKey);
+
+            if (targetKeys.includes(sourceKey)) {
+                await db.deleteObjectStore(sourceKey);
+                deletedStores.push(sourceKey);
+            }
+    
+            let store = await db.createObjectStore(
+                sourceKey, 
+                {
+                    keyPath: srcSettings.keyPath, 
+                    autoIncrement: srcSettings.autoIncrement
+                }
+            );
+        
+            for (let row of this.json[sourceKey]) 
+                store.put(row);
+    
+            createdStores.push(sourceKey);
+    
+        }
+    
+        // log changes
+        if (droppedStores.length > 0) console.log(
+            `\ndropped idb.${db.name} stores:` + 
+            `${droppedStores.join(',')}.\n`
+        );
+        if (createdStores.length > 0) console.log(
+            `\ncreated idb.${db.name} stores: ` + 
+            `${createdStores.join(',')}.\n`
+        );
+    
+    }
 
 }
 
-async function getDbVersion(dbName) {
+// thanks user663031 at stackoverflow q#41516862
+function parseKeysToInclude(keysToInclude) {
+
+    let storeSettings = [];
+    let storeText = '';
+    let depth = 0;
+    
+    let processStoreText = () => {
+        
+        let splits = storeText.split('(');
+        let key = splits.shift().trim();
+        
+        splits = splits.length == 0
+            ? 'id,true'
+            : splits.shift();
+
+        splits = splits.replace(')', '');
+        splits = splits.split(',');
+        if (splits.length == 1)
+            splits.push('true');
+        
+        let keyPath = splits.shift().trim();
+        let autoincrement = splits.shift().trim() == 'true';
+    
+        storeSettings.push({key, keyPath, autoincrement});
+        storeText = '';
+
+    };
+
+    for(let c of keysToInclude) {
+        if (depth == 0 && c == ',') 
+            processStoreText();
+        else {
+            storeText += c;
+            if (c == '(') depth++;
+            if (c == ')') depth--;
+        }
+    }
+
+    processStoreText();
+
+    return storeSettings;
+
+}
+
+function getDbVersion(dbName) {
     return new Promise((res,rej) => {
         let dbOpenRequest = indexedDB.open(dbName);
         dbOpenRequest.onsuccess = event => {
@@ -115,54 +204,6 @@ async function getDbVersion(dbName) {
             res(v);
         };
     });
-}
-
-async function upgrade (db, reset, deleteWhenNotInReset) { 
-
-    let isObject = typeof reset === 'object' && Object.keys(reset).length > 0;
-
-    let datasets = 
-        reset === true ? sample
-        : isObject ? reset
-        : typeof reset === 'string' ? { [reset]: sample[reset] }
-        : Array.isArray(reset) ? reset.reduce((a,b) => Object.assign(a, {[b.key]: b.data}), {})
-        : null;
-        
-    let keyPaths = 
-        reset === true ? Object.keys(sample).map(key => ({ [key]: 'id' }))
-        : isObject ? Object.keys(datasets).reduce((a,b) => Object.assign(a, {[b.key]: 'id' }), {})
-        : typeof reset === 'string' ? { [reset]: 'id' }
-        : Array.isArray(reset) ? reset.reduce((a,b) => Object.assign(a, {[b.key]: b.keyPath}), {})
-        : null;
-
-    let deleteKeys = 
-        deleteWhenNotInReset 
-        ? [...db.objectStoreNames]
-        : Object.keys(datasets);
-        
-    for (let key of deleteKeys) { 
-        if ([...db.objectStoreNames].indexOf(key) == -1)
-            continue;
-        console.log(`deleting ${key}`);
-        await db.deleteObjectStore(key);
-    }
-
-    for (let key of Object.keys(datasets)) { 
-
-        console.log(`creating ${key}`);
-
-        // if the first row of the store contains the expected key, 
-        // then no autoincrement, otherwise yes.
-        let store = await db.createObjectStore(key, {
-            keyPath: keyPaths[key],
-            autoIncrement: datasets[key].length > 0 && !Object.keys(datasets[key][0]).includes(keyPaths[key])
-        });
-
-        for (let row of datasets[key]) 
-            store.put(row);
-
-    }
-
 }
 
 export default SampleDB_idb;
