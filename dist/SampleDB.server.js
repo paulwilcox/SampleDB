@@ -9,7 +9,9 @@
 
 'use strict';
 
-var SampleDB_client = (json, keysToInclude) => 
+let fs = require('fs');
+
+module.exports = (json, keysToInclude) => 
     new manager().reset(
         json, 
         keysToInclude
@@ -21,16 +23,14 @@ class manager {
         this.data = {};
     }
 
-    async reset (
+    reset (
         json, 
         keysToInclude, 
         deleteIfKeyNotFound = false
     ) {
 
-        if (json.endsWith('.json')) {
-            json = await fetch(json);
-            json = await json.json();
-        }
+        if (json.endsWith('.json')) 
+            json = fs.readFileSync(json).toString();
 
         if (typeof json === 'string')
             json = JSON.parse(json);
@@ -69,11 +69,9 @@ class manager {
         // reset the target keys with the source keys
         for(let entry of Object.entries(json))
             this.data[entry[0]] = json[entry[0]];
-        
+      
         return this;
 
     }
 
 }
-
-module.exports = SampleDB_client;
