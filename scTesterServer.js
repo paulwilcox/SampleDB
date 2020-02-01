@@ -194,7 +194,7 @@ function startServer () {
                     import sampleIdb from '/src/SampleDB.idb.js';
 import sampleClient from '/src/SampleDB.client.js';
 
-                    ${content}
+                    ${content}   
 
                     let div = document.createElement('div');
                     div.id = 'results'; 
@@ -203,10 +203,10 @@ import sampleClient from '/src/SampleDB.client.js';
 
                     Promise.resolve(test())
                     .then(res => { div.innerHTML = res; })
-                    .then(() => {
+                    .then(() => 
                         div.innerHTML += ';' + (performance.now() - t0)
-                    })
-                    .finally(() => { document.body.appendChild(div); });
+                    )
+                    .finally(() => document.body.appendChild(div));
 
                 </script>
                 </body> 

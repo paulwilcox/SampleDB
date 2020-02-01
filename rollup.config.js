@@ -13,8 +13,6 @@ let licensePlugin = license({
     }
 });
 
-// Some of these just move the file.
-// Maybe a file copy can be replaced for them.
 export default [{ 
     input: 'src/SampleDB.client.js',
     output: {
@@ -23,14 +21,7 @@ export default [{
     },
     plugins: licensePlugin
 }, {
-    input: 'src/SampleDB.client.js',
-    output: {
-        file: 'src/SampleDB.server.js',
-        format: 'cjs'
-    },
-    plugins: licensePlugin
-}, {
-    input: 'src/SampleDB.client.js',
+    input: 'src/SampleDB.server.js',
     output: {
         file: 'dist/SampleDB.server.js',
         format: 'cjs'
