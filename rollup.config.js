@@ -1,5 +1,5 @@
-import nodeResolve from 'rollup-plugin-node-resolve';
-import commonJs from 'rollup-plugin-commonjs';
+import nodeResolve from '@rollup/plugin-node-resolve';
+import commonJs from '@rollup/plugin-commonjs';
 import license from 'rollup-plugin-license';
 
 // Run license() here, not in the objects of the exported 

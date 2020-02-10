@@ -26,10 +26,10 @@
     "mongodb": "^3.2.5"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^11.0.2",
+    "@rollup/plugin-node-resolve": "^7.1.1",
     "esm": "^3.2.25",
-    "rollup": "^1.13.1",
-    "rollup-plugin-commonjs": "^10.0.0",
-    "rollup-plugin-license": "^0.12.1",
-    "rollup-plugin-node-resolve": "^5.0.4"
+    "rollup": "^1.31.0",
+    "rollup-plugin-license": "^0.13.0"
   }
 }
