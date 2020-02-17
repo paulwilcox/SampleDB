@@ -68,7 +68,7 @@ class manager {
                 .map(k => k.trim());
 
             for(let jkey of Object.keys(this.json)) 
-                if (!this.keysToInclude.includes(jKey))
+                if (!this.keysToInclude.includes(jkey))
                     delete this.json[jkey];
 
         }
@@ -88,46 +88,6 @@ class manager {
         
     }    
 
-/*
-    async _reset () {
-    
-        if (this.json.endsWith('.json')) {
-            this.json = await fetch(this.json);
-            this.json = await this.json.json();
-        }
-    
-        if (typeof this.json === 'string')
-            this.json = JSON.parse(json);
-    
-        if (!this.keysToInclude)
-            this.keysToInclude = Object.keys(this.json).join(',');
-
-        this.storeSettings = parseKeysToInclude(this.keysToInclude)                
-
-        // Get the relevant keys from source
-        if (this.keysToInclude) {
-            let j = {};
-            for (let entry of Object.entries(this.json))    
-                if (this.storeSettings.some(ss => ss.key == entry[0])) 
-                    j[entry[0]] = entry[1];
-            this.json = j;
-        }
-
-        // Reset the entire database if parameters imply full reset
-        if (this.fullReset)
-            new Promise((res,rej) => {
-                let request = indexedDB.deleteDatabase(this.dbName);
-                request.onsuccess = event => {
-                    console.log(`deleting database ${this.dbName}`);
-                    res(event.target.result);
-                }
-                request.onerror = () => 
-                    rej(`error deleteing ${this.dbName}`);
-            });
-
-        
-    }
-*/
     async upgrade (db) { 
     
         let targetKeys = [...db.objectStoreNames];
@@ -162,7 +122,7 @@ class manager {
 
             let store = await db.createObjectStore(
                 sourceKey, 
-                { keyPath, autoIncrement: true }
+                { /*keyPath,*/ autoIncrement: true }
             );
         
             for (let row of this.json[sourceKey]) 
