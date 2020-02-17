@@ -59,11 +59,50 @@ class manager {
     
         if (typeof this.json === 'string')
             this.json = JSON.parse(json);
+
+        // trim irrelevant keys from source
+        if (this.keysToInclude) {
+
+            this.keysToInclude = this.keysToInclude
+                .split(',')
+                .map(k => k.trim());
+
+            for(let jkey of Object.keys(this.json)) 
+                if (!this.keysToInclude.includes(jKey))
+                    delete this.json[jkey];
+
+        }
+        
+        // Reset the entire database if parameters imply full reset
+        if (this.fullReset)
+            new Promise((res,rej) => {
+                let request = indexedDB.deleteDatabase(this.dbName);
+                request.onsuccess = event => {
+                    console.log(`deleting database ${this.dbName}`);
+                    res(event.target.result);
+                };
+                request.onerror = () => 
+                    rej(`error deleteing ${this.dbName}`);
+            });
+
+        
+    }    
+
+/*
+    async _reset () {
+    
+        if (this.json.endsWith('.json')) {
+            this.json = await fetch(this.json);
+            this.json = await this.json.json();
+        }
+    
+        if (typeof this.json === 'string')
+            this.json = JSON.parse(json);
     
         if (!this.keysToInclude)
             this.keysToInclude = Object.keys(this.json).join(',');
 
-        this.storeSettings = parseKeysToInclude(this.keysToInclude);                
+        this.storeSettings = parseKeysToInclude(this.keysToInclude)                
 
         // Get the relevant keys from source
         if (this.keysToInclude) {
@@ -81,14 +120,14 @@ class manager {
                 request.onsuccess = event => {
                     console.log(`deleting database ${this.dbName}`);
                     res(event.target.result);
-                };
+                }
                 request.onerror = () => 
                     rej(`error deleteing ${this.dbName}`);
             });
 
         
     }
-
+*/
     async upgrade (db) { 
     
         let targetKeys = [...db.objectStoreNames];
@@ -112,20 +151,18 @@ class manager {
         // add relevant stores to target
         for (let sourceKey of sourceKeys) { 
     
-            let srcSettings = this.storeSettings
-                .find(ss => ss.key == sourceKey);
-
             if (targetKeys.includes(sourceKey)) {
                 await db.deleteObjectStore(sourceKey);
                 deletedStores.push(sourceKey);
             }
     
+            // Order of non-numeric keys is by insertion, so 
+            // this gets the first key of the first row 
+            let keyPath = Object.keys(this.json[sourceKey][0])[0];
+
             let store = await db.createObjectStore(
                 sourceKey, 
-                {
-                    keyPath: srcSettings.keyPath, 
-                    autoIncrement: srcSettings.autoIncrement
-                }
+                { keyPath, autoIncrement: true }
             );
         
             for (let row of this.json[sourceKey]) 
@@ -146,51 +183,6 @@ class manager {
         );
     
     }
-
-}
-
-// thanks user663031 at stackoverflow q#41516862
-function parseKeysToInclude(keysToInclude) {
-
-    let storeSettings = [];
-    let storeText = '';
-    let depth = 0;
-    
-    let processStoreText = () => {
-        
-        let splits = storeText.split('(');
-        let key = splits.shift().trim();
-        
-        splits = splits.length == 0
-            ? 'id,true'
-            : splits.shift();
-
-        splits = splits.replace(')', '');
-        splits = splits.split(',');
-        if (splits.length == 1)
-            splits.push('true');
-        
-        let keyPath = splits.shift().trim();
-        let autoincrement = splits.shift().trim() == 'true';
-    
-        storeSettings.push({key, keyPath, autoincrement});
-        storeText = '';
-
-    };
-
-    for(let c of keysToInclude) {
-        if (depth == 0 && c == ',') 
-            processStoreText();
-        else {
-            storeText += c;
-            if (c == '(') depth++;
-            if (c == ')') depth--;
-        }
-    }
-
-    processStoreText();
-
-    return storeSettings;
 
 }
 

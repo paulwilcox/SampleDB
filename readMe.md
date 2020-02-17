@@ -112,7 +112,7 @@ If working with IndexedDB, and you need to set the keyPath fields, pass an array
 objects with 'key' (string), 'keyPath' (string), and 'data' (array) as prperties.  
 
 - 'Key' is the name of the table.
-- 'keyPath' is the property that serves as the imary key
+- 'keyPath' is the property that serves as the primary key
 - 'data' is the tabular data.  
 
 ### The core data
