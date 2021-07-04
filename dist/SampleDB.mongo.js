@@ -9,13 +9,16 @@
 
 'use strict';
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+var require$$0 = require('mongodb');
+var require$$1 = require('fs');
 
-var mongodb = _interopDefault(require('mongodb'));
-var fs = _interopDefault(require('fs'));
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
-let MongoClient = mongodb.MongoClient;
+var require$$0__default = /*#__PURE__*/_interopDefaultLegacy(require$$0);
+var require$$1__default = /*#__PURE__*/_interopDefaultLegacy(require$$1);
 
+let MongoClient = require$$0__default['default'].MongoClient;
+let fs = require$$1__default['default'];
 
 var SampleDB_mongo = url => new manager(url);
 
