@@ -7,7 +7,7 @@ async function test() {
 
     let collectionNames = 
         (await db.collections())
-        .map(c => c.s.name);
+        .map(c => c.collectionName);
 
     return collectionNames.includes('students');
 

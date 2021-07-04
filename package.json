@@ -23,7 +23,7 @@
   "license": "ISC",
   "dependencies": {},
   "optionalDependencies": {
-    "mongodb": "^3.2.5"
+    "mongodb": "^3.6.9"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.0",

@@ -52,11 +52,11 @@ class manager {
 
             let client = await MongoClient.connect(
                 this.url, 
-                { useNewUrlParser: true}
+                { useUnifiedTopology: true}
             );
 
             let db = client.db();
-            let targetKeys = (await db.collections()).map(c => c.s.name);
+            let targetKeys = (await db.collections()).map(c => c.collectionName);
             let sourceKeys = Object.keys(this.json);
             let droppedCollections = [];
             let createdCollections = [];
