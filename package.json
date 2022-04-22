@@ -21,15 +21,14 @@
   ],
   "author": "Paul Wilcox",
   "license": "ISC",
-  "dependencies": {},
   "optionalDependencies": {
-    "mongodb": "^3.6.9"
+    "mongodb": "^4.5.0"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^19.0.0",
-    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-commonjs": "^21.1.0",
+    "@rollup/plugin-node-resolve": "^13.2.1",
     "esm": "^3.2.25",
-    "rollup": "^2.52.7",
-    "rollup-plugin-license": "^2.5.0"
+    "rollup": "^2.70.2",
+    "rollup-plugin-license": "^2.7.0"
   }
 }
